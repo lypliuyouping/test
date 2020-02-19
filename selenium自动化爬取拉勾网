@@ -1,0 +1,82 @@
+# @Author : lyp
+# @FileName: 拉勾网信息自动化爬取.py
+from selenium import webdriver
+from pprint import pprint
+import time,re
+imag_list = []
+page_html = []
+per_nu = []
+from configparser import ConfigParser
+we_b = webdriver.Chrome('C:\\Users\\lyp\\chromedriver\\chromedriver.exe')
+#设置浏览器全屏
+we_b.maximize_window()
+we_b.get('https://www.lagou.com/')
+#隐式等待
+we_b.implicitly_wait(10)
+#点击叉掉
+we_b.find_element_by_id('cboxClose').click()
+time.sleep(4)
+#点击登录按钮
+we_b.find_element_by_class_name('login').click()
+target = ConfigParser()
+#加载配置信息
+target.read('pwd.ini',encoding='utf-8')
+name = target.get('info','name')
+pd = target.get('info','pd')
+#填入电话号码
+we_b.find_element_by_xpath('//div[@class="input_border"]/input[@type="text"]').send_keys(name)
+#填入密码
+we_b.find_element_by_xpath('//div[@class="input_border"]/input[@type="password"]').send_keys(pd)
+#点击登录
+we_b.find_element_by_xpath('//div[@class="login-btn login-password sense_login_password btn-green"]').click()
+#获取验证图片地址
+msgs = we_b.find_elements_by_class_name('geetest_item_img')
+for msg in msgs:
+    #将图片存入列表
+    url = msg.get_attribute('src')
+    if url:
+        imag_list.append(url)
+time.sleep(10)#等待人识别点击
+#获取翻页后的url
+url = we_b.current_url
+we_b.get(url)
+#输入python,搜索有关的信息
+we_b.find_element_by_id('search_input').send_keys('python')
+we_b.implicitly_wait(5)
+#点击搜索按钮
+we_b.find_element_by_id('search_button').click()
+#隐式等待
+we_b.implicitly_wait(5)
+#如果有广告
+try:
+    #去掉广告
+    we_b.find_element_by_xpath('//div[@class="body-btn"]').click()
+    we_b.implicitly_wait(5)
+except:
+    pass
+finally:
+    #点击杭州地区
+    we_b.find_element_by_xpath('//div[@class="city-wrapper dn"]/a[@data-id="653"]').click()
+#网页所有信息
+# html = we_b.page_source
+for page in range(2,31):#第1页到第30页信息
+    we_b.find_element_by_xpath('//span[@page="{}"]'.format(page)).click()
+    we_b.implicitly_wait(10)
+    #获取公司名称，python招聘条件
+    data_saray = re.findall('<li class=".*?" data-index="\\d+" data-positionid=".*?" data-salary="(.*?)" data-company="(.*?)" data-positionname="(.*?)" data',we_b.page_source)
+    print(data_saray)
+    #获取公司福利待遇
+    fuli = re.findall('<div class="li_b_r">“(.*?)”</div>',we_b.page_source)
+    print(fuli[:15])
+    #获取招聘人数
+    person_num = re.findall('<div class="industry">([^a-zA-Z]+)</div>',we_b.page_source,re.S)
+    for num in person_num:
+        #去掉空格
+        num = re.sub('[ ]+','',num)
+        num = re.sub('\n','',num)
+        per_nu.append(num)
+    print(per_nu)
+    #获取公司地址
+    location = re.findall('<span class="add">\[<em>([^a-zA-Z]+)</em>\]</span>',we_b.page_source)
+    print(location)
+    time.sleep(1)
