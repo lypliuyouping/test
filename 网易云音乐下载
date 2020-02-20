@@ -1,0 +1,79 @@
+# @FileName: 爬取网易云音乐.py
+import requests
+import time
+import re
+from selenium import webdriver
+# 打开浏览器
+we_b = webdriver.Chrome('C:\\Users\\lyp\\chromedriver\\chromedriver.exe')
+def operate(driver):
+    # 隐式等待加载
+    driver.implicitly_wait(5)
+    # 打开网易云链接
+    driver.get('https://music.163.com/')
+    # 点击排行榜
+    driver.find_element_by_xpath('//*[@id="g_nav2"]/div/ul/li[2]/a').click()
+    return driver
+def frame(driver):
+    frame = driver.find_element_by_id('g_iframe')  # 查询frame
+    driver.switch_to.frame(frame)  # 切换frame
+    return driver
+top_list = []
+top_title = []
+id_list = []
+song_name = []
+def get_data(driver):
+    # 查找id
+    ids = driver.find_elements_by_xpath('//p[@class="name"]/a')
+    for id in ids:
+        top_list.append(id.get_attribute('href'))
+        top_title.append(id.text)
+    we_b.close()  # 关闭浏览器
+def main():
+    wb = operate(we_b)
+    ifram_we_b = frame(wb)
+    get_data(ifram_we_b)
+def total():
+    for top_lis,top_ti in zip(top_list,top_title):#打开关闭浏览器加载另一个排行版(一共39个排行版)
+        we_b = webdriver.Chrome('C:\\Users\\lyp\\chromedriver\\chromedriver.exe')
+        we_b.get(top_lis)
+        # 隐式等待加载
+        we_b.implicitly_wait(5)
+        we_b = frame(we_b)
+        id_names = we_b.find_elements_by_xpath('//tbody/tr')
+        for id_name in id_names:
+            ids = id_name.get_attribute('id')
+            ids = str(ids)[0:10]#取前十位即为id
+            id_list.append(ids)
+        names = we_b.find_elements_by_xpath('//b')
+        for name in names:
+            try:
+                song_name.append(name.get_attribute('title'))
+            except:
+                pass
+        # 数据清洗
+        for i in range(len(song_name)):
+            if '\xa0' in song_name[i]:
+                song_name[i] = re.sub('\xa0', '', song_name[i])  # 将\xa0换成空格
+        #关闭浏览器
+        we_b.close()
+        time.sleep(0.5)
+        print(top_ti,top_lis)
+    print(song_name)
+    print(len(song_name))
+def connect():#拼接
+    num=0
+    for id,file in zip(id_list,song_name):
+        num += 1
+        out_link = 'https://link.hhtjim.com/163/{}.mp3'.format(id)
+        try:
+            response = requests.get(out_link)
+            with open('C:\\users\\lyp/desktop\\mp3\\{}.mp3'.format(file),'wb') as f:#写入文件
+                f.write(response.content)
+        except:
+            print('第{}首{}下载失败'.format(num,file))
+        else:
+            print('第{}首{}下载成功'.format(num,file))
+if __name__ == '__main__':
+    main()
+    total()
+    connect()
